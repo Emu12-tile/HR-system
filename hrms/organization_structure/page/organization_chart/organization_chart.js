@@ -109,15 +109,13 @@ frappe.pages["organization-chart"].on_page_load = function (wrapper) {
 				<div class="os-pos os-vac">${__("Vacant")}</div>`;
 		}
 
-		const org_children =
-			n.children && n.children.length
-				? `<ul>${n.children.map(node_html).join("")}</ul>`
-				: "";
-
-		const position_children =
-			n.positions && n.positions.length
-				? `<ul class="os-position-tree">${n.positions.map(position_node_html).join("")}</ul>`
-				: "";
+		// Child units and the unit's own positions are siblings in ONE <ul> so the
+		// CSS connectors link every child box back to this unit box.
+		const child_html = [
+			...(n.children || []).map(node_html),
+			...(n.positions || []).map(position_node_html),
+		].join("");
+		const children = child_html ? `<ul>${child_html}</ul>` : "";
 
 		return `<li>
 			<div class="os-node ${n.occupied ? "occupied" : "vacant"} ${meta.type_class}"
@@ -125,8 +123,7 @@ frappe.pages["organization-chart"].on_page_load = function (wrapper) {
 				<div class="os-head">${head}</div>
 				<div class="os-body">${body}</div>
 			</div>
-			${org_children}
-			${position_children}
+			${children}
 		</li>`;
 	}
 

@@ -359,41 +359,6 @@ def resolve_position_chart_unit(row) -> str | None:
 	return None
 
 
-def _legacy_resolve_org_units_from_location(location_unit: str) -> dict[str, str]:
-	"""Migration helper when Location Unit still exists on old databases."""
-	if not frappe.db.exists("DocType", "Location Unit"):
-		return {}
-
-	loc = frappe.db.get_value(
-		"Location Unit",
-		location_unit,
-		["location_name", "location_type", "parent_location"],
-		as_dict=True,
-	)
-	if not loc or not loc.location_type:
-		return {}
-
-	location_1_map = {"Head Office": "Head Office", "District": "District Office", "Branch": "Branch"}
-	loc_type = location_1_map.get(loc.location_type)
-	result: dict[str, str] = {}
-
-	if loc_type == "Branch":
-		branch = find_org_unit_by_location_name(loc.location_name, "Branch")
-		if branch:
-			result["org_branch"] = branch
-		if loc.parent_location:
-			district_name = frappe.db.get_value("Location Unit", loc.parent_location, "location_name")
-			district = find_org_unit_by_location_name(district_name, "District")
-			if district:
-				result["org_district"] = district
-	elif loc_type == "District Office":
-		district = find_org_unit_by_location_name(loc.location_name, "District")
-		if district:
-			result["org_district"] = district
-
-	return result
-
-
 def get_deepest_organization_unit(units: list[str]) -> str | None:
 	"""Pick the deepest unit by cascade field order (used when only names are available)."""
 	if not units:

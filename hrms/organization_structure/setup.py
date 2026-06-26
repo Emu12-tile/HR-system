@@ -347,9 +347,20 @@ def create_branch_staffing_templates():
 		).insert(ignore_permissions=True)
 
 
+def _org_unit_id(unit_name: str | None) -> str | None:
+	"""Resolve an Organization Unit's permanent ID (name) from its unit_name.
+
+	Organization Units are named by a stable system ID (OU-#####), so sample data
+	and references that use the human-readable unit_name must look up the ID.
+	"""
+	if not unit_name:
+		return None
+	return frappe.db.get_value("Organization Unit", {"unit_name": unit_name}, "name")
+
+
 def create_organization_units():
 	for unit_name, unit_code, unit_type, parent, is_group in ORGANIZATION_UNITS:
-		if frappe.db.exists("Organization Unit", unit_name):
+		if _org_unit_id(unit_name):
 			continue
 
 		frappe.get_doc(
@@ -358,7 +369,7 @@ def create_organization_units():
 				"unit_name": unit_name,
 				"unit_code": unit_code,
 				"unit_type": unit_type,
-				"parent_organization_unit": parent,
+				"parent_organization_unit": _org_unit_id(parent),
 				"is_group": is_group,
 				"status": "Active",
 			}
@@ -443,9 +454,10 @@ def create_site_organization_units():
 		is_primary_ho,
 	) in SITE_ORGANIZATION_UNITS:
 		payload = {
+			"unit_name": unit_name,
 			"unit_code": unit_code,
 			"unit_type": unit_type,
-			"parent_organization_unit": parent,
+			"parent_organization_unit": _org_unit_id(parent),
 			"is_group": is_group,
 			"status": "Active",
 			"location_1": location_1,
@@ -459,16 +471,14 @@ def create_site_organization_units():
 			"auto_create_positions": 1 if staffing else 0,
 		}
 
-		if frappe.db.exists("Organization Unit", unit_name):
-			existing = frappe.db.get_value("Organization Unit", unit_name, "location_1")
-			if existing:
+		existing_id = _org_unit_id(unit_name)
+		if existing_id:
+			if frappe.db.get_value("Organization Unit", existing_id, "location_1"):
 				continue
-			frappe.db.set_value("Organization Unit", unit_name, payload, update_modified=False)
+			frappe.db.set_value("Organization Unit", existing_id, payload, update_modified=False)
 			continue
 
-		frappe.get_doc({"doctype": "Organization Unit", "unit_name": unit_name, **payload}).insert(
-			ignore_permissions=True
-		)
+		frappe.get_doc({"doctype": "Organization Unit", **payload}).insert(ignore_permissions=True)
 
 
 def create_location_units():
@@ -486,9 +496,9 @@ def create_hq_positions():
 				"doctype": "Position",
 				"position_code": position_code,
 				"position_template": template,
-				"organization_unit": org_unit,
+				"organization_unit": _org_unit_id(org_unit),
 				"location_1": "Head Office",
-				"site_organization_unit": HEAD_OFFICE_SITE,
+				"site_organization_unit": _org_unit_id(HEAD_OFFICE_SITE),
 				"parent_position": parent,
 				"is_group": is_group,
 				"is_head_position": is_head,
@@ -618,6 +628,54 @@ def verify_sample_data():
 	print(f"Occupied Positions: {frappe.db.count('Position', {'occupancy_status': 'Occupied'})}")
 
 
+def patch_location_unit_references():
+	"""Point standard reports and number cards at Organization Unit (Location Unit was removed)."""
+	for name in frappe.get_all("Report", filters={"ref_doctype": "Location Unit"}, pluck="name"):
+		frappe.db.set_value(
+			"Report",
+			name,
+			"ref_doctype",
+			"Organization Unit",
+			update_modified=False,
+		)
+
+	for name in frappe.get_all(
+		"Number Card", filters={"document_type": "Location Unit"}, pluck="name"
+	):
+		frappe.db.set_value(
+			"Number Card",
+			name,
+			"document_type",
+			"Organization Unit",
+			update_modified=False,
+		)
+
+
+def patch_position_number_cards():
+	"""Fix stale number-card filters that reference Position.status instead of position_status."""
+	correct_filters = {
+		"Vacant Positions": '[["Position","is_occupied","=",0],["Position","position_status","=","Active"]]',
+	}
+
+	for name, filters_json in correct_filters.items():
+		if not frappe.db.exists("Number Card", name):
+			continue
+
+		current = frappe.db.get_value("Number Card", name, "filters_json") or ""
+		if current == filters_json:
+			continue
+
+		# only rewrite records still using the old non-existent status field
+		if '"status"' in current and '"position_status"' not in current:
+			frappe.db.set_value(
+				"Number Card",
+				name,
+				"filters_json",
+				filters_json,
+				update_modified=False,
+			)
+
+
 def _import_fixture(relative_path: str):
 	"""Import a JSON fixture bundled with this module (works with the Docker bind-mount)."""
 	path = Path(__file__).resolve().parent / relative_path
@@ -629,33 +687,18 @@ def _import_fixture(relative_path: str):
 
 
 def patch_position_site_fields():
-	"""Back-fill location_1 and site_organization_unit on positions from legacy fields."""
-	location_name_map = {}
-	if frappe.db.table_exists("tabLocation Unit"):
-		location_name_map = {
-			row.name: row
-			for row in frappe.get_all(
-				"Location Unit",
-				fields=["name", "location_type"],
-			)
-		}
-
-	if frappe.db.has_column("Position", "location_unit"):
+	"""Back-fill location_1 and site_organization_unit on positions from legacy columns."""
+	if not frappe.db.has_column("Position", "location_unit"):
+		pass
+	elif frappe.db.has_column("Position", "site_organization_unit"):
 		for row in frappe.get_all(
 			"Position",
-			filters={"location_unit": ["is", "set"]},
-			fields=["name", "location_unit", "location_type", "location_1", "site_organization_unit"],
+			filters={"location_unit": ["is", "set"], "site_organization_unit": ["in", ("", None)]},
+			fields=["name", "location_unit", "location_type", "location_1"],
 		):
 			updates = {}
 			site_name = row.location_unit
-			if not frappe.db.exists("Organization Unit", site_name):
-				legacy = location_name_map.get(site_name)
-				if legacy and frappe.db.exists("Organization Unit", legacy.name):
-					site_name = legacy.name
-
-			if not row.site_organization_unit and site_name and frappe.db.exists(
-				"Organization Unit", site_name
-			):
+			if site_name and frappe.db.exists("Organization Unit", site_name):
 				updates["site_organization_unit"] = site_name
 			if not row.location_1:
 				if row.location_type:
@@ -682,100 +725,6 @@ def patch_position_site_fields():
 				frappe.db.set_value("Position", row.name, "location_1", location_1, update_modified=False)
 
 
-def migrate_location_units_to_organization_units():
-	"""Copy legacy Location Unit records onto Organization Unit before dropping the doctype."""
-	if not frappe.db.table_exists("tabLocation Unit"):
-		return
-
-	legacy_type_to_unit_type = {
-		"Head Office": "Executive",
-		"District": "District",
-		"Branch": "Branch",
-	}
-
-	for loc in frappe.get_all(
-		"Location Unit",
-		fields=[
-			"name",
-			"location_name",
-			"location_code",
-			"location_type",
-			"parent_location",
-			"region",
-			"zone",
-			"city",
-			"woreda",
-			"address_line_1",
-			"address_line_2",
-			"postal_code",
-			"phone",
-			"email",
-			"branch_staffing_template",
-			"auto_create_positions",
-			"status",
-			"is_group",
-		],
-		order_by="lft asc",
-	):
-		location_1 = LOCATION_1_FROM_LEGACY.get(loc.location_type)
-		if not location_1:
-			continue
-
-		if frappe.db.exists("Organization Unit", loc.name):
-			frappe.db.set_value(
-				"Organization Unit",
-				loc.name,
-				{
-					"location_1": location_1,
-					"unit_code": loc.location_code,
-					"region": loc.region,
-					"zone": loc.zone,
-					"city": loc.city,
-					"woreda": loc.woreda,
-					"address_line_1": loc.address_line_1,
-					"address_line_2": loc.address_line_2,
-					"postal_code": loc.postal_code,
-					"phone": loc.phone,
-					"email": loc.email,
-					"branch_staffing_template": loc.branch_staffing_template,
-					"auto_create_positions": loc.auto_create_positions,
-					"is_primary_head_office": 1 if location_1 == "Head Office" and not loc.parent_location else 0,
-				},
-				update_modified=False,
-			)
-			continue
-
-		frappe.get_doc(
-			{
-				"doctype": "Organization Unit",
-				"unit_name": loc.name,
-				"unit_code": loc.location_code,
-				"unit_type": legacy_type_to_unit_type.get(loc.location_type, "Other"),
-				"parent_organization_unit": loc.parent_location,
-				"is_group": loc.is_group,
-				"status": loc.status or "Active",
-				"location_1": location_1,
-				"is_primary_head_office": 1 if location_1 == "Head Office" and not loc.parent_location else 0,
-				"region": loc.region,
-				"zone": loc.zone,
-				"city": loc.city,
-				"woreda": loc.woreda,
-				"address_line_1": loc.address_line_1,
-				"address_line_2": loc.address_line_2,
-				"postal_code": loc.postal_code,
-				"phone": loc.phone,
-				"email": loc.email,
-				"branch_staffing_template": loc.branch_staffing_template,
-				"auto_create_positions": 0,
-			}
-		).insert(ignore_permissions=True)
-
-
-def patch_position_location_types():
-	"""Deprecated alias kept for older scripts."""
-	patch_position_site_fields()
-
-
 def patch_position_organization_units():
 	"""Re-link positions to district/branch org units from cascade and location."""
 	for name in frappe.get_all("Position", pluck="name"):
@@ -797,6 +746,29 @@ def patch_position_organization_units():
 			frappe.db.set_value("Position", name, updates, update_modified=False)
 
 
+ORG_STRUCTURE_FIXTURES = (
+	"fixtures/workspace.json",
+	"fixtures/workspace_sidebar.json",
+	"fixtures/desktop_icon.json",
+	"number_card/total_organization_units/total_organization_units.json",
+	"number_card/total_locations/total_locations.json",
+	"number_card/total_districts/total_districts.json",
+	"number_card/total_branches/total_branches.json",
+	"number_card/active_branches/active_branches.json",
+	"number_card/inactive_branches/inactive_branches.json",
+	"number_card/total_positions/total_positions.json",
+	"number_card/occupied_positions/occupied_positions.json",
+	"number_card/vacant_positions/vacant_positions.json",
+	"report/location_hierarchy/location_hierarchy.json",
+	"report/branch_list/branch_list.json",
+	"report/district_summary/district_summary.json",
+	"report/branches_by_region/branches_by_region.json",
+	"report/branches_by_zone/branches_by_zone.json",
+	"report/branches_by_city/branches_by_city.json",
+	"report/branches_by_woreda/branches_by_woreda.json",
+)
+
+
 def refresh_module():
 	"""Re-sync workspace, sidebar, and desktop icon, then clear cache.
 
@@ -804,15 +776,14 @@ def refresh_module():
 
 	Use after editing workspace / sidebar JSON, or when the desk shows "not found".
 	"""
-	for fixture in (
-		"fixtures/workspace.json",
-		"workspace/organization_structure/organization_structure.json",
-		"fixtures/workspace_sidebar.json",
-		"fixtures/desktop_icon.json",
-	):
+	for fixture in ORG_STRUCTURE_FIXTURES:
 		_import_fixture(fixture)
 
-	migrate_location_units_to_organization_units()
+	# workspace copy under workspace/ is optional (fixtures/workspace.json is canonical)
+	_import_fixture("workspace/organization_structure/organization_structure.json")
+
+	patch_location_unit_references()
+	patch_position_number_cards()
 	patch_position_site_fields()
 	patch_position_organization_units()
 
@@ -876,6 +847,19 @@ def diagnose():
 	):
 		print(f"{dt}: {'OK' if frappe.db.exists('DocType', dt) else 'MISSING'}")
 
+	print("\n=== Location Unit legacy refs ===")
+	report_refs = frappe.get_all(
+		"Report", filters={"ref_doctype": "Location Unit"}, pluck="name"
+	)
+	card_refs = frappe.get_all(
+		"Number Card", filters={"document_type": "Location Unit"}, pluck="name"
+	)
+	if report_refs or card_refs:
+		print(f"Reports still on Location Unit: {report_refs or 'none'}")
+		print(f"Number cards still on Location Unit: {card_refs or 'none'}")
+	else:
+		print("OK (all use Organization Unit)")
+
 	print("\n=== Number Cards ===")
 	for nc in (
 		"Total Organization Units",
@@ -888,7 +872,12 @@ def diagnose():
 		"Occupied Positions",
 		"Vacant Positions",
 	):
-		print(f"{nc}: {'OK' if frappe.db.exists('Number Card', nc) else 'MISSING'}")
+		status = "OK" if frappe.db.exists("Number Card", nc) else "MISSING"
+		if nc == "Vacant Positions" and frappe.db.exists("Number Card", nc):
+			filters_json = frappe.db.get_value("Number Card", nc, "filters_json") or ""
+			if '"status"' in filters_json and '"position_status"' not in filters_json:
+				status = "BAD FILTER (uses Position.status)"
+		print(f"{nc}: {status}")
 
 	print("\n=== Reports ===")
 	for rep in (

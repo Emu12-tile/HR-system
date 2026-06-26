@@ -172,7 +172,7 @@
 
 /* hierarchy background colors (unit name header) */
 .os-node.os-type-executive .os-head {
-	background: #c62828; /* red */
+	background: #2ca8ff; /* blue */
 }
 
 .os-node.os-type-function .os-head {
