@@ -39,8 +39,10 @@ class TestOrganizationUnit(FrappeTestCase):
 
 
 def create_organization_unit(unit_name: str, parent: str = None, is_group: int = 0, **kwargs):
-	if frappe.db.exists("Organization Unit", unit_name):
-		return frappe.get_doc("Organization Unit", unit_name)
+	# Units are named by a system ID (OU-#####), so look up by the unit_name field.
+	existing = frappe.db.get_value("Organization Unit", {"unit_name": unit_name}, "name")
+	if existing:
+		return frappe.get_doc("Organization Unit", existing)
 
 	return frappe.get_doc(
 		{

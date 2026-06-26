@@ -35,28 +35,19 @@ def get_chart_data():
 	nodes = {}
 	for u in units:
 		head = head_positions.get(u.name)
+		# Only a position flagged is_head_position fills the unit box. Every other
+		# position renders as its own box linked beneath the unit (no promotion).
 		unit_positions = positions_by_unit.get(u.name, [])
-		display = head
-		child_positions = unit_positions
-
-		if not display and unit_positions:
-			display_row = unit_positions[0]
-			display = frappe._dict(
-				position_name=display_row.get("title"),
-				current_employee=display_row.get("current_employee"),
-				is_occupied=display_row.get("occupied"),
-			)
-			child_positions = display_row.get("children") or []
 
 		nodes[u.name] = {
 			"id": u.name,
 			"unit": u.unit_name,
 			"unit_type": u.unit_type or "",
-			"has_head": 1 if display else 0,
-			"title": display.position_name if display else "",
-			"employee": (employee_names.get(display.current_employee) if display else "") or "",
-			"occupied": 1 if (display and display.is_occupied) else 0,
-			"positions": child_positions,
+			"has_head": 1 if head else 0,
+			"title": head.position_name if head else "",
+			"employee": (employee_names.get(head.current_employee) if head else "") or "",
+			"occupied": 1 if (head and head.is_occupied) else 0,
+			"positions": unit_positions,
 			"children": [],
 		}
 
