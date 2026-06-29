@@ -7,11 +7,40 @@ frappe.pages["organization-chart"].on_page_load = function (wrapper) {
 
 	frappe.breadcrumbs.add("Organization Structure");
 
-	const $layout = $('<div class="os-layout"></div>').appendTo(page.body);
-	const $container = $('<div class="os-chart"></div>').appendTo($layout);
-	const $sidebar = $('<div class="os-sidebar"></div>').appendTo($layout);
+	// Mount the controls in the page header row, beside the search; fall back to
+	// the page body if the head content isn't available.
+	const $head = $(page.wrapper).find(".page-head-content");
+	const $toolbar = $('<div class="os-toolbar"></div>');
+	$toolbar.appendTo($head.length ? $head : page.body);
 
-	page.add_inner_button(__("Refresh"), load);
+	const $container = $('<div class="os-chart"></div>').appendTo(page.body);
+
+	// Frappe's global navbar search ("Search  Ctrl+K"). We relocate it into this
+	// page's header group while the page is open and restore it on leaving, so it
+	// is not lost from the navbar on other pages.
+	let $globalSearch = null;
+	let $searchHome = null;
+
+	function ensure_search_ref() {
+		if ($globalSearch) return;
+		$globalSearch = $("header .search-bar, .navbar .search-bar").first();
+		if ($globalSearch.length) {
+			$searchHome = $('<span class="os-search-home"></span>').insertBefore($globalSearch);
+		}
+	}
+
+	function move_search_into_toolbar() {
+		ensure_search_ref();
+		if (!$globalSearch || !$globalSearch.length) return;
+		const $slot = $toolbar.find(".os-search-slot");
+		if ($slot.length) $globalSearch.appendTo($slot).addClass("os-search-moved");
+	}
+
+	function restore_search() {
+		if ($globalSearch && $globalSearch.length && $searchHome && $searchHome.length) {
+			$globalSearch.removeClass("os-search-moved").insertAfter($searchHome);
+		}
+	}
 
 	const UNIT_META = {
 		Executive: { abbr: "exe", type_class: "os-type-executive", color: "#2ca8ff" },
@@ -32,7 +61,7 @@ frappe.pages["organization-chart"].on_page_load = function (wrapper) {
 
 	function load() {
 		$container.html(`<div class="os-empty text-muted">${__("Loading...")}</div>`);
-		$sidebar.empty();
+		$toolbar.empty();
 		frappe
 			.call({
 				method: "hrms.organization_structure.page.organization_chart.organization_chart.get_chart_data",
@@ -47,7 +76,7 @@ frappe.pages["organization-chart"].on_page_load = function (wrapper) {
 					"No organization units found. Create organization units to see the chart.",
 				)}</div>`,
 			);
-			$sidebar.empty();
+			$toolbar.empty();
 			return;
 		}
 
@@ -58,7 +87,7 @@ frappe.pages["organization-chart"].on_page_load = function (wrapper) {
 
 		inject_toggles();
 		bind_node_clicks();
-		build_sidebar(collect_unit_types(roots));
+		build_controls(collect_unit_types(roots));
 	}
 
 	function bind_node_clicks() {
@@ -140,7 +169,7 @@ frappe.pages["organization-chart"].on_page_load = function (wrapper) {
 		});
 	}
 
-	/* ---------- right-side panel ---------- */
+	/* ---------- right-side controls ---------- */
 
 	function collect_unit_types(nodes, set) {
 		set = set || new Set();
@@ -154,7 +183,7 @@ frappe.pages["organization-chart"].on_page_load = function (wrapper) {
 		return [...known, ...extras];
 	}
 
-	function build_sidebar(types) {
+	function build_controls(types) {
 		const esc = frappe.utils.escape_html;
 		const options = types
 			.map((t) => {
@@ -167,56 +196,92 @@ frappe.pages["organization-chart"].on_page_load = function (wrapper) {
 			})
 			.join("");
 
-		$sidebar.html(`
-			<div class="os-panel">
-				<div class="os-panel-title">${__("Expand by Unit Type")}</div>
-				<input type="text" class="form-control input-sm os-type-search"
-					placeholder="${__("Search unit type...")}">
-				<div class="os-type-options">${
-					options || `<div class="text-muted small">${__("No unit types")}</div>`
-				}</div>
-				<div class="os-panel-actions">
-					<button class="btn btn-xs btn-default os-expand-all">${__("Expand all")}</button>
-					<button class="btn btn-xs btn-default os-collapse-all">${__("Collapse all")}</button>
-					<button class="btn btn-xs btn-default os-clear-types">${__("Clear")}</button>
+		$toolbar.html(`
+			<div class="os-dropdown-wrap">
+				<button class="btn btn-default btn-sm os-dropdown-toggle" type="button">
+					<span class="os-dropdown-count-text">${__("Expand by Unit Type")}</span>
+					<span class="caret"></span>
+				</button>
+				<div class="os-dropdown">
+					<input type="text" class="form-control input-sm os-type-search"
+						placeholder="${__("Search unit type...")}">
+					<div class="os-type-options">${
+						options || `<div class="text-muted small">${__("No unit types")}</div>`
+					}</div>
+					<div class="os-panel-actions">
+						<button class="btn btn-xs btn-default os-expand-all">${__("Expand all")}</button>
+						<button class="btn btn-xs btn-default os-collapse-all">${__("Collapse all")}</button>
+						<button class="btn btn-xs btn-default os-clear-types">${__("Clear")}</button>
+					</div>
 				</div>
 			</div>
+			<span class="os-search-slot"></span>
+			<button class="btn btn-default btn-sm os-refresh" type="button">${__("Refresh")}</button>
 		`);
 
+		$toolbar.find(".os-refresh").on("click", load);
+		move_search_into_toolbar();
+
+		const $wrap = $toolbar.find(".os-dropdown-wrap");
+		const $toggle = $wrap.find(".os-dropdown-toggle");
+		const $label = $wrap.find(".os-dropdown-count-text");
+
 		const selected_types = () =>
-			$sidebar
+			$wrap
 				.find(".os-type-options input:checked")
 				.map(function () {
 					return this.value;
 				})
 				.get();
 
-		$sidebar.find(".os-type-options input").on("change", () => expand_by_types(selected_types()));
+		const update_label = () => {
+			const n = selected_types().length;
+			$label.text(n ? __("Unit Type ({0})", [n]) : __("Expand by Unit Type"));
+			$toggle.toggleClass("active", n > 0);
+		};
 
-		$sidebar.find(".os-type-search").on("input", function () {
+		// open / close the dropdown
+		$toggle.on("click", (e) => {
+			e.stopPropagation();
+			$wrap.toggleClass("open");
+		});
+		// keep clicks inside the menu from closing it
+		$wrap.find(".os-dropdown").on("click", (e) => e.stopPropagation());
+		// close on outside click (re-bind cleanly to avoid stacking across renders)
+		$(document).off("click.os_chart").on("click.os_chart", () => $wrap.removeClass("open"));
+
+		$wrap.find(".os-type-options input").on("change", () => {
+			expand_by_types(selected_types());
+			update_label();
+		});
+
+		$wrap.find(".os-type-search").on("input", function () {
 			const q = (this.value || "").toLowerCase();
-			$sidebar.find(".os-type-option").each(function () {
+			$wrap.find(".os-type-option").each(function () {
 				const text = $(this).find(".os-type-label").text().toLowerCase();
 				$(this).toggle(text.indexOf(q) !== -1);
 			});
 		});
 
-		$sidebar.find(".os-expand-all").on("click", () => {
-			$sidebar.find(".os-type-options input").prop("checked", false);
+		$wrap.find(".os-expand-all").on("click", () => {
+			$wrap.find(".os-type-options input").prop("checked", false);
 			$container.find(".os-node").removeClass("os-match");
 			expand_all();
+			update_label();
 		});
 
-		$sidebar.find(".os-collapse-all").on("click", () => {
-			$sidebar.find(".os-type-options input").prop("checked", false);
+		$wrap.find(".os-collapse-all").on("click", () => {
+			$wrap.find(".os-type-options input").prop("checked", false);
 			$container.find(".os-node").removeClass("os-match");
 			collapse_all();
+			update_label();
 		});
 
-		$sidebar.find(".os-clear-types").on("click", () => {
-			$sidebar.find(".os-type-options input").prop("checked", false);
-			$sidebar.find(".os-type-search").val("").trigger("input");
+		$wrap.find(".os-clear-types").on("click", () => {
+			$wrap.find(".os-type-options input").prop("checked", false);
+			$wrap.find(".os-type-search").val("").trigger("input");
 			expand_by_types([]);
+			update_label();
 		});
 	}
 
@@ -229,14 +294,11 @@ frappe.pages["organization-chart"].on_page_load = function (wrapper) {
 				? `<ul class="os-position-tree">${p.children.map(position_node_html).join("")}</ul>`
 				: "";
 
-		let body;
-		if (p.occupied) {
-			body = `<div class="os-emp">${esc(p.employee || "")}</div>
-				<div class="os-pos">${esc(p.title || "")}</div>`;
-		} else {
-			body = `<div class="os-emp">${esc(p.title || "")}</div>
-				<div class="os-pos os-vac">${__("Vacant")}</div>`;
-		}
+		// Name is shown once in the header; the body only carries the holder /
+		// vacancy status so the box is not duplicated.
+		const body = p.occupied
+			? `<div class="os-emp">${esc(p.employee || "")}</div>`
+			: `<div class="os-pos os-vac">${__("Vacant")}</div>`;
 
 		return `<li>
 			<div class="os-node os-node-position ${p.occupied ? "occupied" : "vacant"}"
@@ -289,4 +351,13 @@ frappe.pages["organization-chart"].on_page_load = function (wrapper) {
 
 	load();
 	$(wrapper).bind("show", load);
+
+	// Put the global search back in the navbar when navigating away from this page.
+	frappe.router.on("change", () => {
+		if (frappe.get_route_str() === "organization-chart") {
+			move_search_into_toolbar();
+		} else {
+			restore_search();
+		}
+	});
 };

@@ -1,35 +1,58 @@
-.os-layout {
-	display: flex;
-	align-items: flex-start;
-	gap: 16px;
-}
-
 .os-chart {
-	flex: 1 1 auto;
-	min-width: 0;
 	overflow: auto;
 	padding: 24px 16px;
 }
 
-/* right-side control panel */
-.os-sidebar {
-	flex: 0 0 240px;
-	position: sticky;
-	top: 16px;
+/* search + refresh + expand controls, grouped on the right of the page header */
+.os-toolbar {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	margin-left: 8px;
 }
 
-.os-panel {
+/* slot the relocated navbar search drops into */
+.os-search-slot {
+	display: inline-flex;
+	align-items: center;
+}
+
+.os-search-slot .search-bar,
+.os-search-slot .search-bar .form-group {
+	margin: 0;
+}
+
+.os-dropdown-wrap {
+	position: relative;
+	display: inline-block;
+}
+
+.os-dropdown-toggle .caret {
+	margin-left: 6px;
+}
+
+.os-dropdown-toggle.active {
+	border-color: var(--blue-500, #2490ef);
+	color: var(--blue-600, #1579d0);
+}
+
+/* the menu, hidden until .open */
+.os-dropdown {
+	display: none;
+	position: absolute;
+	right: 0;
+	top: calc(100% + 4px);
+	z-index: 1001;
+	width: 240px;
 	border: 1px solid var(--gray-300, #c8d1d9);
 	border-radius: 8px;
 	background: var(--card-bg, #fff);
 	padding: 12px;
-	box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.1));
+	box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.15));
 }
 
-.os-panel-title {
-	font-weight: 600;
-	font-size: 13px;
-	margin-bottom: 8px;
+.os-dropdown-wrap.open .os-dropdown {
+	display: block;
 }
 
 .os-type-search {
@@ -37,7 +60,7 @@
 }
 
 .os-type-options {
-	max-height: 320px;
+	max-height: 280px;
 	overflow-y: auto;
 	margin-bottom: 10px;
 }
@@ -315,16 +338,13 @@
 	border-style: dashed;
 }
 
+/* Non-head positions are always grey (head positions live in the unit box). */
 .os-node-position .os-head-position {
-	background: #546e7a;
+	background: #8d99a6;
 }
 
-.os-node-position.occupied .os-head-position {
-	background: #2e7d32;
-}
-
-.os-node-position.vacant .os-head-position {
-	background: #ef6c00;
+.os-node-position .os-body {
+	background: var(--bg-light-gray, #f4f5f6);
 }
 
 /* collapse / expand toggle */

@@ -47,6 +47,8 @@ frappe.ui.form.on("Organization Unit", {
 	},
 
 	refresh(frm) {
+		sync_unit_end_date(frm);
+
 		frm.add_custom_button(__("Organization Tree"), () => {
 			frappe.set_route("Tree", "Organization Unit");
 		});
@@ -154,7 +156,21 @@ frappe.ui.form.on("Organization Unit", {
 	short_code(frm) {
 		update_unit_code_preview(frm);
 	},
+
+	status(frm) {
+		sync_unit_end_date(frm);
+	},
 });
+
+function sync_unit_end_date(frm) {
+	if (frm.doc.status === "Inactive") {
+		if (!frm.doc.unit_end_date) {
+			frm.set_value("unit_end_date", frappe.datetime.get_today());
+		}
+	} else if (frm.doc.unit_end_date) {
+		frm.set_value("unit_end_date", null);
+	}
+}
 
 function update_unit_code_preview(frm) {
 	// Fill the read-only Unit Code field live as the user builds a new unit, so
