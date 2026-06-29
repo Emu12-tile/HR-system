@@ -1,0 +1,103 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-06-26 09:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "competency_type",
+  "competency",
+  "required_proficiency_level",
+  "definition",
+  "levels_section",
+  "level_1_novice",
+  "level_2_intermediate",
+  "level_3_proficient",
+  "level_4_advanced",
+  "level_5_expert"
+ ],
+ "fields": [
+  {
+   "fieldname": "competency_type",
+   "fieldtype": "Select",
+   "label": "Competency Type",
+   "options": "Functional\nLeadership",
+   "read_only": 1
+  },
+  {
+   "columns": 3,
+   "fieldname": "competency",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Competency",
+   "reqd": 1
+  },
+  {
+   "columns": 2,
+   "description": "1 = Novice ... 5 = Expert",
+   "fieldname": "required_proficiency_level",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Required Level (1-5)",
+   "reqd": 1
+  },
+  {
+   "columns": 5,
+   "fieldname": "definition",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Definition",
+   "reqd": 1
+  },
+  {
+   "fieldname": "levels_section",
+   "fieldtype": "Section Break",
+   "label": "Proficiency Levels"
+  },
+  {
+   "fieldname": "level_1_novice",
+   "fieldtype": "Small Text",
+   "label": "Level 1 - Novice",
+   "reqd": 1
+  },
+  {
+   "fieldname": "level_2_intermediate",
+   "fieldtype": "Small Text",
+   "label": "Level 2 - Intermediate",
+   "reqd": 1
+  },
+  {
+   "fieldname": "level_3_proficient",
+   "fieldtype": "Small Text",
+   "label": "Level 3 - Proficient",
+   "reqd": 1
+  },
+  {
+   "fieldname": "level_4_advanced",
+   "fieldtype": "Small Text",
+   "label": "Level 4 - Advanced",
+   "reqd": 1
+  },
+  {
+   "fieldname": "level_5_expert",
+   "fieldtype": "Small Text",
+   "label": "Level 5 - Expert",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-06-26 09:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Organization Structure",
+ "name": "Competency Dictionary Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "idx",
+ "sort_order": "ASC",
+ "states": [],
+ "track_changes": 1
+}

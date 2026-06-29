@@ -181,6 +181,12 @@ bench --site hrms.localhost enable-scheduler
 # module-to-app map is rebuilt before migrate runs.
 bench --site hrms.localhost clear-cache
 bench --site hrms.localhost migrate
+
+# migrate deletes the Organization Structure workspace, sidebar, and desktop icon
+# as "orphans" (they are fixtures, not registered in the upstream hrms hooks.py).
+# Re-import them from the module's fixtures so the desk navigation survives.
+bench --site hrms.localhost execute hrms.organization_structure.setup.refresh_module
+
 bench --site hrms.localhost clear-cache
 
 bench use hrms.localhost

@@ -103,6 +103,16 @@
   {
    "hidden": 0,
    "is_query_report": 0,
+   "label": "Competency Dictionary",
+   "link_count": 0,
+   "link_to": "Competency Dictionary",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
    "label": "Reports",
    "link_count": 8,
    "onboard": 0,
@@ -197,7 +207,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-06-22 18:00:00.000000",
+ "modified": "2026-06-26 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Organization Structure",
  "name": "Organization Structure",

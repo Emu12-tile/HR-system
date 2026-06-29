@@ -244,6 +244,30 @@ function populate_org_cascade(frm) {
 	});
 }
 
+// Open the Competency Dictionary for this position, creating it if none exists.
+// Competency Dictionary is auto-named after the position, so its name == frm.doc.name.
+function open_competency_dictionary(frm) {
+	if (!frm.doc.job_category) {
+		frappe.msgprint({
+			title: __("Job Category required"),
+			message: __(
+				"Set a Job Category on this position before defining competencies. " +
+					"The competency dictionary derives core/functional/leadership requirements from it.",
+			),
+			indicator: "orange",
+		});
+		return;
+	}
+
+	frappe.db.exists("Competency Dictionary", frm.doc.name).then((exists) => {
+		if (exists) {
+			frappe.set_route("Form", "Competency Dictionary", frm.doc.name);
+		} else {
+			frappe.new_doc("Competency Dictionary", { job_position: frm.doc.name });
+		}
+	});
+}
+
 frappe.ui.form.on("Position", {
 	onload(frm) {
 		set_org_cascade_queries(frm);
@@ -259,6 +283,12 @@ frappe.ui.form.on("Position", {
 		frm.add_custom_button(__("Position Tree"), () => {
 			frappe.set_route("Tree", "Position");
 		});
+
+		if (!frm.is_new()) {
+			frm.add_custom_button(__("Add Competency"), () => {
+				open_competency_dictionary(frm);
+			});
+		}
 
 		populate_org_cascade(frm);
 		sync_location_1_from_site(frm);

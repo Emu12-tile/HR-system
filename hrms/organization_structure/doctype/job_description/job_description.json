@@ -1,0 +1,197 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2026-06-26 11:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Document",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "job_information_section",
+  "position_title",
+  "job_category",
+  "job_grade",
+  "job_info_preview",
+  "job_summary_section",
+  "job_summary",
+  "roles_section",
+  "roles_responsibilities",
+  "competency_section",
+  "competency_preview",
+  "qualifications_section",
+  "educational_qualification",
+  "work_experience",
+  "mandatory_training_certification"
+ ],
+ "fields": [
+  {
+   "default": "JD-.YYYY.-",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Naming Series",
+   "options": "JD-.YYYY.-",
+   "print_hide": 1
+  },
+  {
+   "fieldname": "job_information_section",
+   "fieldtype": "Section Break",
+   "label": "Job Information"
+  },
+  {
+   "description": "One Job Description per Position. Job information below is read from the Position.",
+   "fieldname": "position_title",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Position",
+   "options": "Position",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fetch_from": "position_title.job_category",
+   "fieldname": "job_category",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Job Category",
+   "options": "Job Category",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "position_title.job_grade",
+   "fieldname": "job_grade",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "in_standard_filter": 1,
+   "label": "Job Grade",
+   "options": "Job Grade",
+   "read_only": 1
+  },
+  {
+   "fieldname": "job_info_preview",
+   "fieldtype": "HTML",
+   "label": "Job Information Preview"
+  },
+  {
+   "fieldname": "job_summary_section",
+   "fieldtype": "Section Break",
+   "label": "Job Summary"
+  },
+  {
+   "fieldname": "job_summary",
+   "fieldtype": "Text Editor",
+   "label": "Job Summary",
+   "reqd": 1
+  },
+  {
+   "fieldname": "roles_section",
+   "fieldtype": "Section Break",
+   "label": "Roles and Responsibilities"
+  },
+  {
+   "fieldname": "roles_responsibilities",
+   "fieldtype": "Text Editor",
+   "label": "Roles and Responsibilities",
+   "reqd": 1
+  },
+  {
+   "fieldname": "competency_section",
+   "fieldtype": "Section Break",
+   "label": "Required Competencies"
+  },
+  {
+   "description": "Read-only. Pulled from the position's Competency Dictionary.",
+   "fieldname": "competency_preview",
+   "fieldtype": "HTML",
+   "label": "Required Competencies Preview"
+  },
+  {
+   "fieldname": "qualifications_section",
+   "fieldtype": "Section Break",
+   "label": "Required Qualifications"
+  },
+  {
+   "fieldname": "educational_qualification",
+   "fieldtype": "Text Editor",
+   "label": "Educational Qualification",
+   "reqd": 1
+  },
+  {
+   "fieldname": "work_experience",
+   "fieldtype": "Text Editor",
+   "label": "Work Experience",
+   "reqd": 1
+  },
+  {
+   "fieldname": "mandatory_training_certification",
+   "fieldtype": "Text Editor",
+   "label": "Mandatory Training / Certification"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-06-26 11:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Organization Structure",
+ "name": "Job Description",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Organization Administrator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "position_title",
+ "track_changes": 1
+}

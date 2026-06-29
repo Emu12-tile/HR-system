@@ -1,0 +1,176 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:job_position",
+ "creation": "2026-06-26 09:00:00.000000",
+ "doctype": "DocType",
+ "document_type": "Setup",
+ "engine": "InnoDB",
+ "field_order": [
+  "position_details_section",
+  "job_position",
+  "column_break_details",
+  "job_category",
+  "requires_leadership_competency",
+  "core_section",
+  "core_competencies",
+  "functional_section",
+  "functional_competencies",
+  "leadership_section",
+  "leadership_competencies",
+  "summary_section",
+  "competency_summary"
+ ],
+ "fields": [
+  {
+   "fieldname": "position_details_section",
+   "fieldtype": "Section Break",
+   "label": "Position Details"
+  },
+  {
+   "fieldname": "job_position",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Job Position",
+   "options": "Position",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "column_break_details",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "job_position.job_category",
+   "fieldname": "job_category",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Job Category",
+   "options": "Job Category",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fetch_from": "job_category.requires_leadership_competency",
+   "fieldname": "requires_leadership_competency",
+   "fieldtype": "Check",
+   "label": "Requires Leadership Competency",
+   "read_only": 1
+  },
+  {
+   "description": "Required for all positions. Name and definition only — no proficiency levels.",
+   "fieldname": "core_section",
+   "fieldtype": "Section Break",
+   "label": "Core Competencies"
+  },
+  {
+   "fieldname": "core_competencies",
+   "fieldtype": "Table",
+   "label": "Core Competencies",
+   "options": "Competency Dictionary Core Item"
+  },
+  {
+   "description": "Required for all positions. Each needs a definition, all 5 proficiency levels, and a required level (1-5).",
+   "fieldname": "functional_section",
+   "fieldtype": "Section Break",
+   "label": "Functional Competencies"
+  },
+  {
+   "fieldname": "functional_competencies",
+   "fieldtype": "Table",
+   "label": "Functional Competencies",
+   "options": "Competency Dictionary Item"
+  },
+  {
+   "depends_on": "eval:doc.requires_leadership_competency",
+   "description": "Managerial positions only — required when the Job Category requires leadership competency.",
+   "fieldname": "leadership_section",
+   "fieldtype": "Section Break",
+   "label": "Leadership Competencies"
+  },
+  {
+   "depends_on": "eval:doc.requires_leadership_competency",
+   "fieldname": "leadership_competencies",
+   "fieldtype": "Table",
+   "label": "Leadership Competencies",
+   "options": "Competency Dictionary Item"
+  },
+  {
+   "fieldname": "summary_section",
+   "fieldtype": "Section Break",
+   "label": "Competency Summary"
+  },
+  {
+   "description": "Read-only. Rebuilt automatically on every save.",
+   "fieldname": "competency_summary",
+   "fieldtype": "Table",
+   "label": "Competency Summary",
+   "options": "Competency Dictionary Summary",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-06-26 09:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Organization Structure",
+ "name": "Competency Dictionary",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Organization Administrator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "job_position",
+ "track_changes": 1
+}
