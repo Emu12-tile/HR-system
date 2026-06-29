@@ -1,6 +1,82 @@
+.os-layout {
+	display: flex;
+	align-items: flex-start;
+	gap: 16px;
+}
+
 .os-chart {
+	flex: 1 1 auto;
+	min-width: 0;
 	overflow: auto;
 	padding: 24px 16px;
+}
+
+/* right-side control panel */
+.os-sidebar {
+	flex: 0 0 240px;
+	position: sticky;
+	top: 16px;
+}
+
+.os-panel {
+	border: 1px solid var(--gray-300, #c8d1d9);
+	border-radius: 8px;
+	background: var(--card-bg, #fff);
+	padding: 12px;
+	box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.1));
+}
+
+.os-panel-title {
+	font-weight: 600;
+	font-size: 13px;
+	margin-bottom: 8px;
+}
+
+.os-type-search {
+	margin-bottom: 8px;
+}
+
+.os-type-options {
+	max-height: 320px;
+	overflow-y: auto;
+	margin-bottom: 10px;
+}
+
+.os-type-option {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-weight: 400;
+	font-size: 12px;
+	margin: 0;
+	padding: 4px 2px;
+	cursor: pointer;
+	border-radius: 4px;
+}
+
+.os-type-option:hover {
+	background: var(--bg-light-gray, #f4f5f6);
+}
+
+.os-type-option input {
+	margin: 0;
+}
+
+.os-type-swatch {
+	flex: 0 0 auto;
+	width: 12px;
+	height: 12px;
+	border-radius: 3px;
+}
+
+.os-type-label {
+	flex: 1 1 auto;
+}
+
+.os-panel-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
 }
 
 .os-empty {
@@ -249,4 +325,41 @@
 
 .os-node-position.vacant .os-head-position {
 	background: #ef6c00;
+}
+
+/* collapse / expand toggle */
+.os-toggle {
+	/* injected between the node card and its children <ul>, so DOM order suffices */
+	margin-top: 4px;
+	width: 22px;
+	height: 22px;
+	padding: 0;
+	border-radius: 50%;
+	border: 1px solid var(--gray-400, #aeb8c0);
+	background: var(--card-bg, #fff);
+	color: var(--text-color, #1f272e);
+	font-size: 15px;
+	font-weight: 700;
+	line-height: 1;
+	cursor: pointer;
+	z-index: 2;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.os-toggle:hover {
+	background: var(--bg-light-gray, #f4f5f6);
+	box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.1));
+}
+
+/* hide a node's subtree (and its connectors) when collapsed */
+.os-tree li.collapsed > ul {
+	display: none;
+}
+
+/* emphasise units matched by the unit-type filter */
+.os-node.os-match {
+	outline: 2px solid var(--blue-500, #2490ef);
+	outline-offset: 2px;
 }
