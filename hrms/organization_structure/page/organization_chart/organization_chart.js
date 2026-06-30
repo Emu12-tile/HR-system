@@ -352,6 +352,12 @@ frappe.pages["organization-chart"].on_page_load = function (wrapper) {
 	load();
 	$(wrapper).bind("show", load);
 
+	frappe.realtime.on("organization_chart_refresh", () => {
+		if (frappe.get_route_str() === "organization-chart") {
+			load();
+		}
+	});
+
 	// Put the global search back in the navbar when navigating away from this page.
 	frappe.router.on("change", () => {
 		if (frappe.get_route_str() === "organization-chart") {

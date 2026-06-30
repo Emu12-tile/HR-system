@@ -5,6 +5,30 @@ import frappe
 
 from hrms.organization_structure.doctype.position.position import resolve_position_chart_unit
 
+POSITION_ORG_UNIT_FIELDS = (
+	"org_function",
+	"org_process",
+	"org_sub_process",
+	"org_department",
+	"org_district",
+	"org_team",
+	"org_branch",
+	"org_sub_team",
+	"organization_unit",
+	"site_organization_unit",
+)
+
+POSITION_CHART_FIELDS = (
+	"name",
+	"position_name",
+	"parent_position",
+	"current_employee",
+	"is_occupied",
+	"is_head_position",
+	"lft",
+	*POSITION_ORG_UNIT_FIELDS,
+)
+
 
 @frappe.whitelist()
 def get_chart_data():
@@ -20,29 +44,36 @@ def get_chart_data():
 			"unit_name",
 			"unit_type",
 			"parent_organization_unit",
+			"status",
 			"lft",
 		],
 		order_by="lft asc",
 	)
 
-	head_positions = _get_head_positions()
-	positions_by_unit = _get_positions_by_unit(head_positions)
+	unit_map = {unit.name: unit for unit in units}
+	visible_units = _get_visible_unit_names(units, unit_map)
+
+	head_positions = _get_head_positions(visible_units)
+	positions_by_unit = _get_positions_by_unit(head_positions, visible_units)
 	employee_names = _get_employee_names(_collect_employee_ids(head_positions, positions_by_unit))
 
 	for unit_positions in positions_by_unit.values():
 		_attach_employee_names(unit_positions, employee_names)
 
 	nodes = {}
-	for u in units:
-		head = head_positions.get(u.name)
+	for unit in units:
+		if unit.name not in visible_units:
+			continue
+
+		head = head_positions.get(unit.name)
 		# Only a position flagged is_head_position fills the unit box. Every other
 		# position renders as its own box linked beneath the unit (no promotion).
-		unit_positions = positions_by_unit.get(u.name, [])
+		unit_positions = positions_by_unit.get(unit.name, [])
 
-		nodes[u.name] = {
-			"id": u.name,
-			"unit": u.unit_name,
-			"unit_type": u.unit_type or "",
+		nodes[unit.name] = {
+			"id": unit.name,
+			"unit": unit.unit_name,
+			"unit_type": unit.unit_type or "",
 			"has_head": 1 if head else 0,
 			"title": head.position_name if head else "",
 			"employee": (employee_names.get(head.current_employee) if head else "") or "",
@@ -52,9 +83,13 @@ def get_chart_data():
 		}
 
 	roots = []
-	for u in units:
-		node = nodes[u.name]
-		parent = nodes.get(u.parent_organization_unit)
+	for unit in units:
+		if unit.name not in visible_units:
+			continue
+
+		node = nodes[unit.name]
+		parent_name = _nearest_visible_parent(unit.name, visible_units, unit_map)
+		parent = nodes.get(parent_name) if parent_name else None
 		if parent:
 			parent["children"].append(node)
 		else:
@@ -63,50 +98,87 @@ def get_chart_data():
 	return roots
 
 
-def _get_head_positions():
+def _get_visible_unit_names(units: list, unit_map: dict) -> set[str]:
+	"""Active units with no inactive ancestor (inactive subtrees are excluded)."""
+	visible = set()
+
+	for unit in units:
+		if not _is_unit_active(unit):
+			continue
+
+		parent = unit.parent_organization_unit
+		has_inactive_ancestor = False
+		while parent:
+			parent_unit = unit_map.get(parent)
+			if not parent_unit:
+				break
+			if not _is_unit_active(parent_unit):
+				has_inactive_ancestor = True
+				break
+			parent = parent_unit.parent_organization_unit
+
+		if not has_inactive_ancestor:
+			visible.add(unit.name)
+
+	return visible
+
+
+def _is_unit_active(unit) -> bool:
+	return (unit.status or "Active").strip() == "Active"
+
+
+def _position_has_hidden_org_link(row, visible_units: set[str]) -> bool:
+	for field in POSITION_ORG_UNIT_FIELDS:
+		value = row.get(field)
+		if value and value not in visible_units:
+			return True
+	return False
+
+
+def _position_is_chart_visible(row, visible_units: set[str]) -> bool:
+	if _position_has_hidden_org_link(row, visible_units):
+		return False
+
+	target_unit = resolve_position_chart_unit(row)
+	return bool(target_unit and target_unit in visible_units)
+
+
+def _nearest_visible_parent(unit_name: str, visible_units: set[str], unit_map: dict) -> str | None:
+	parent = unit_map[unit_name].parent_organization_unit
+	while parent:
+		if parent in visible_units:
+			return parent
+		parent_unit = unit_map.get(parent)
+		parent = parent_unit.parent_organization_unit if parent_unit else None
+	return None
+
+
+def _get_head_positions(visible_units: set[str]):
 	"""Map each organization unit to its head position (first one wins)."""
 	rows = frappe.get_all(
 		"Position",
 		filters={"is_head_position": 1, "position_status": "Active"},
-		fields=[
-			"name",
-			"organization_unit",
-			"org_district",
-			"org_branch",
-			"site_organization_unit",
-			"position_name",
-			"current_employee",
-			"is_occupied",
-		],
+		fields=list(POSITION_CHART_FIELDS),
 		order_by="lft asc",
 	)
 
 	heads = {}
 	for row in rows:
+		if not _position_is_chart_visible(row, visible_units):
+			continue
+
 		unit = resolve_position_chart_unit(row)
 		if unit and unit not in heads:
 			heads[unit] = row
 	return heads
 
 
-def _get_positions_by_unit(head_positions: dict) -> dict:
+def _get_positions_by_unit(head_positions: dict, visible_units: set[str]) -> dict:
 	"""Group active positions by organization unit, excluding head positions shown in the unit box."""
 	rows = frappe.get_all(
 		"Position",
 		filters={"position_status": "Active"},
-		fields=[
-			"name",
-			"position_name",
-			"organization_unit",
-			"org_district",
-			"org_branch",
-			"site_organization_unit",
-			"parent_position",
-			"current_employee",
-			"is_occupied",
-			"is_head_position",
-			"lft",
-		],
+		fields=list(POSITION_CHART_FIELDS),
 		order_by="lft asc",
 	)
 
@@ -115,6 +187,9 @@ def _get_positions_by_unit(head_positions: dict) -> dict:
 
 	for row in rows:
 		if row.name in head_ids:
+			continue
+
+		if not _position_is_chart_visible(row, visible_units):
 			continue
 
 		target_unit = resolve_position_chart_unit(row)
