@@ -47,6 +47,9 @@ frappe.ui.form.on("Organization Unit", {
 	},
 
 	refresh(frm) {
+		sync_unit_start_date(frm);
+		sync_unit_end_date(frm);
+
 		frm.add_custom_button(__("Organization Tree"), () => {
 			frappe.set_route("Tree", "Organization Unit");
 		});
@@ -154,7 +157,214 @@ frappe.ui.form.on("Organization Unit", {
 	short_code(frm) {
 		update_unit_code_preview(frm);
 	},
+
+	status(frm) {
+		sync_unit_end_date(frm);
+	},
+
+	before_save(frm) {
+		confirm_inactive_status(frm);
+	},
+
+	after_save(frm) {
+		frm._inactive_status_confirmed = false;
+		frappe.realtime.publish("organization_chart_refresh");
+	},
 });
+
+function confirm_inactive_status(frm) {
+	const becoming_inactive = frm.doc.status === "Inactive";
+	const needs_confirm =
+		becoming_inactive && (frm.is_new() || frm.is_dirty("status")) && !frm._inactive_status_confirmed;
+
+	if (!needs_confirm) {
+		return;
+	}
+
+	frappe.validated = false;
+
+	const unit_label = frappe.utils.escape_html(
+		frm.doc.unit_name || frm.doc.name || __("this organization unit"),
+	);
+	const end_date = frappe.datetime.str_to_user(
+		frm.doc.unit_end_date || frappe.datetime.get_today(),
+	);
+
+	const dialog = new frappe.ui.Dialog({
+		title: __("Mark Organization Unit Inactive?"),
+		size: "large",
+		fields: [
+			{
+				fieldname: "inactive_confirm_html",
+				fieldtype: "HTML",
+				options: get_inactive_confirm_html(unit_label, end_date),
+			},
+			{
+				fieldname: "acknowledge",
+				fieldtype: "Check",
+				label: __("I understand this unit will be hidden from the Organization Chart"),
+			},
+		],
+		primary_action_label: __("Yes, Mark Inactive"),
+		primary_action() {
+			if (!dialog.get_value("acknowledge")) {
+				frappe.show_alert({
+					message: __("Please confirm that you understand the effects."),
+					indicator: "orange",
+				});
+				return;
+			}
+
+			dialog.hide();
+			frm._inactive_status_confirmed = true;
+			frm.save();
+		},
+	});
+
+	dialog.set_secondary_action_label(__("Cancel"));
+	dialog.set_secondary_action(() => dialog.hide());
+	dialog.get_primary_btn().addClass("btn-danger").prop("disabled", true);
+	dialog
+		.get_primary_btn()
+		.prepend(`${inactive_dialog_icon("close-circle", "xs")} `);
+	const $secondary_btn = dialog.$wrapper.find(".btn-modal-secondary");
+	if ($secondary_btn.length) {
+		$secondary_btn.prepend(`${inactive_dialog_icon("arrow-left", "xs")} `);
+	}
+
+	dialog.fields_dict.acknowledge.$input.on("change", () => {
+		dialog.get_primary_btn().prop("disabled", !dialog.get_value("acknowledge"));
+	});
+
+	dialog.show();
+}
+
+function inactive_dialog_icon(name, size = "sm") {
+	if (typeof frappe.utils.icon === "function") {
+		return frappe.utils.icon(name, size);
+	}
+	return `<svg class="icon icon-${size}" aria-hidden="true"><use href="#icon-${name}"></use></svg>`;
+}
+
+function get_inactive_confirm_html(unit_label, end_date) {
+	const effects = [
+		{
+			icon: "organization",
+			text: __("Removed from the Organization Chart"),
+		},
+		{
+			icon: "hierarchy",
+			text: __("All units beneath it will also be hidden from the chart"),
+		},
+		{
+			icon: "calendar",
+			text: __("End Date will be set to {0}", [end_date]),
+		},
+		{
+			icon: "restriction",
+			text: __("No longer available when creating new positions or child units"),
+		},
+	];
+
+	const effect_rows = effects
+		.map(
+			(effect) => `
+			<li class="ou-inactive-effect">
+				<span class="ou-inactive-effect__icon">${inactive_dialog_icon(effect.icon, "sm")}</span>
+				<span class="ou-inactive-effect__text">${effect.text}</span>
+			</li>`,
+		)
+		.join("");
+
+	return `
+		<style>
+			.ou-inactive-confirm {
+				margin-bottom: 0.5rem;
+			}
+			.ou-inactive-confirm__hero {
+				display: flex;
+				gap: 1rem;
+				align-items: flex-start;
+				padding: 1rem;
+				border-radius: var(--border-radius-md);
+				background: var(--alert-bg-warning);
+				border: 1px solid var(--border-color);
+				margin-bottom: 1rem;
+			}
+			.ou-inactive-confirm__icon {
+				flex: 0 0 auto;
+				color: var(--orange-500);
+				line-height: 1;
+			}
+			.ou-inactive-confirm__icon .icon {
+				width: 2rem;
+				height: 2rem;
+			}
+			.ou-inactive-confirm__lead {
+				margin: 0;
+				line-height: 1.5;
+			}
+			.ou-inactive-confirm__subtitle {
+				margin: 0.35rem 0 0;
+				color: var(--text-muted);
+				font-size: var(--text-sm);
+			}
+			.ou-inactive-confirm__effects {
+				list-style: none;
+				margin: 0;
+				padding: 0;
+			}
+			.ou-inactive-effect {
+				display: flex;
+				align-items: flex-start;
+				gap: 0.65rem;
+				padding: 0.55rem 0.25rem;
+				border-bottom: 1px solid var(--border-color);
+			}
+			.ou-inactive-effect:last-child {
+				border-bottom: none;
+			}
+			.ou-inactive-effect__icon {
+				flex: 0 0 auto;
+				color: var(--text-muted);
+				margin-top: 0.1rem;
+			}
+			.ou-inactive-effect__text {
+				line-height: 1.45;
+			}
+		</style>
+		<div class="ou-inactive-confirm">
+			<div class="ou-inactive-confirm__hero">
+				<div class="ou-inactive-confirm__icon">${inactive_dialog_icon("alert-triangle", "lg")}</div>
+				<div>
+					<p class="ou-inactive-confirm__lead">
+						${__("You are about to inactivate")} <strong>${unit_label}</strong>.
+					</p>
+					<p class="ou-inactive-confirm__subtitle">
+						${__("Review the effects below, then confirm to continue.")}
+					</p>
+				</div>
+			</div>
+			<ul class="ou-inactive-confirm__effects">${effect_rows}</ul>
+		</div>
+	`;
+}
+
+function sync_unit_start_date(frm) {
+	if (!frm.doc.unit_start_date) {
+		frm.set_value("unit_start_date", frappe.datetime.get_today());
+	}
+}
+
+function sync_unit_end_date(frm) {
+	if (frm.doc.status === "Inactive") {
+		if (!frm.doc.unit_end_date) {
+			frm.set_value("unit_end_date", frappe.datetime.get_today());
+		}
+	} else if (frm.doc.unit_end_date) {
+		frm.set_value("unit_end_date", null);
+	}
+}
 
 function update_unit_code_preview(frm) {
 	// Fill the read-only Unit Code field live as the user builds a new unit, so

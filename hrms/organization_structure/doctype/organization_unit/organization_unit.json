@@ -14,6 +14,8 @@
   "unit_type",
   "column_break_main",
   "status",
+  "unit_start_date",
+  "unit_end_date",
   "is_group",
   "organization_level",
   "section_break_parent",
@@ -90,7 +92,21 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Status",
-   "options": "Active\nInactive"
+   "options": "Active\nInactive",
+   "reqd": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "unit_start_date",
+   "fieldtype": "Date",
+   "label": "Start Date",
+   "reqd": 1
+  },
+  {
+   "description": "Set automatically when Status is Inactive. Optional while the unit is Active.",
+   "fieldname": "unit_end_date",
+   "fieldtype": "Date",
+   "label": "End Date"
   },
   {
    "default": "0",

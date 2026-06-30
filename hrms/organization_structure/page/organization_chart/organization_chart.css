@@ -3,6 +3,105 @@
 	padding: 24px 16px;
 }
 
+/* search + refresh + expand controls, grouped on the right of the page header */
+.os-toolbar {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	margin-left: 8px;
+}
+
+/* slot the relocated navbar search drops into */
+.os-search-slot {
+	display: inline-flex;
+	align-items: center;
+}
+
+.os-search-slot .search-bar,
+.os-search-slot .search-bar .form-group {
+	margin: 0;
+}
+
+.os-dropdown-wrap {
+	position: relative;
+	display: inline-block;
+}
+
+.os-dropdown-toggle .caret {
+	margin-left: 6px;
+}
+
+.os-dropdown-toggle.active {
+	border-color: var(--blue-500, #2490ef);
+	color: var(--blue-600, #1579d0);
+}
+
+/* the menu, hidden until .open */
+.os-dropdown {
+	display: none;
+	position: absolute;
+	right: 0;
+	top: calc(100% + 4px);
+	z-index: 1001;
+	width: 240px;
+	border: 1px solid var(--gray-300, #c8d1d9);
+	border-radius: 8px;
+	background: var(--card-bg, #fff);
+	padding: 12px;
+	box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.15));
+}
+
+.os-dropdown-wrap.open .os-dropdown {
+	display: block;
+}
+
+.os-type-search {
+	margin-bottom: 8px;
+}
+
+.os-type-options {
+	max-height: 280px;
+	overflow-y: auto;
+	margin-bottom: 10px;
+}
+
+.os-type-option {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-weight: 400;
+	font-size: 12px;
+	margin: 0;
+	padding: 4px 2px;
+	cursor: pointer;
+	border-radius: 4px;
+}
+
+.os-type-option:hover {
+	background: var(--bg-light-gray, #f4f5f6);
+}
+
+.os-type-option input {
+	margin: 0;
+}
+
+.os-type-swatch {
+	flex: 0 0 auto;
+	width: 12px;
+	height: 12px;
+	border-radius: 3px;
+}
+
+.os-type-label {
+	flex: 1 1 auto;
+}
+
+.os-panel-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
 .os-empty {
 	padding: 48px 0;
 	text-align: center;
@@ -239,14 +338,48 @@
 	border-style: dashed;
 }
 
+/* Non-head positions are always grey (head positions live in the unit box). */
 .os-node-position .os-head-position {
-	background: #546e7a;
+	background: #8d99a6;
 }
 
-.os-node-position.occupied .os-head-position {
-	background: #2e7d32;
+.os-node-position .os-body {
+	background: var(--bg-light-gray, #f4f5f6);
 }
 
-.os-node-position.vacant .os-head-position {
-	background: #ef6c00;
+/* collapse / expand toggle */
+.os-toggle {
+	/* injected between the node card and its children <ul>, so DOM order suffices */
+	margin-top: 4px;
+	width: 22px;
+	height: 22px;
+	padding: 0;
+	border-radius: 50%;
+	border: 1px solid var(--gray-400, #aeb8c0);
+	background: var(--card-bg, #fff);
+	color: var(--text-color, #1f272e);
+	font-size: 15px;
+	font-weight: 700;
+	line-height: 1;
+	cursor: pointer;
+	z-index: 2;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.os-toggle:hover {
+	background: var(--bg-light-gray, #f4f5f6);
+	box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.1));
+}
+
+/* hide a node's subtree (and its connectors) when collapsed */
+.os-tree li.collapsed > ul {
+	display: none;
+}
+
+/* emphasise units matched by the unit-type filter */
+.os-node.os-match {
+	outline: 2px solid var(--blue-500, #2490ef);
+	outline-offset: 2px;
 }

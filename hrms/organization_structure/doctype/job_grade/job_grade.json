@@ -8,7 +8,8 @@
  "document_type": "Setup",
  "engine": "InnoDB",
  "field_order": [
-  "grade_level"
+  "grade_level",
+  "grade_value"
  ],
  "fields": [
   {
@@ -20,11 +21,20 @@
    "label": "Level",
    "reqd": 1,
    "unique": 1
+  },
+  {
+   "description": "Numeric value derived from the level, used to sort grades in ascending order.",
+   "fieldname": "grade_value",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Grade Value",
+   "no_copy": 1,
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-06-22 19:30:00.000000",
+ "modified": "2026-06-30 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Organization Structure",
  "name": "Job Grade",
@@ -74,7 +84,7 @@
   }
  ],
  "row_format": "Dynamic",
- "sort_field": "grade_level",
+ "sort_field": "grade_value",
  "sort_order": "ASC",
  "states": [],
  "title_field": "grade_level",
