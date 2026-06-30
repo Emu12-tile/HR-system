@@ -47,6 +47,7 @@ frappe.ui.form.on("Organization Unit", {
 	},
 
 	refresh(frm) {
+		sync_unit_start_date(frm);
 		sync_unit_end_date(frm);
 
 		frm.add_custom_button(__("Organization Tree"), () => {
@@ -161,6 +162,12 @@ frappe.ui.form.on("Organization Unit", {
 		sync_unit_end_date(frm);
 	},
 });
+
+function sync_unit_start_date(frm) {
+	if (!frm.doc.unit_start_date) {
+		frm.set_value("unit_start_date", frappe.datetime.get_today());
+	}
+}
 
 function sync_unit_end_date(frm) {
 	if (frm.doc.status === "Inactive") {

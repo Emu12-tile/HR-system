@@ -6,7 +6,7 @@ import re
 
 import frappe
 from frappe import _
-from frappe.utils import cint, today
+from frappe.utils import cint, getdate, today
 from frappe.utils.nestedset import NestedSet
 
 REQUIRED_PARENT_LOCATION_1 = {
@@ -67,6 +67,7 @@ class OrganizationUnit(NestedSet):
 		short_code: DF.Data | None
 		status: DF.Literal["Active", "Inactive"]
 		unit_end_date: DF.Date | None
+		unit_start_date: DF.Date | None
 		unit_code: DF.Data | None
 		unit_name: DF.Data
 		unit_type: DF.Literal["", "Executive", "Function", "Process", "Sub-Process", "Department", "District", "Team", "Branch", "Sub-Team", "Other"]
@@ -86,7 +87,9 @@ class OrganizationUnit(NestedSet):
 		self.validate_geography()
 		self.validate_primary_head_office()
 		self.validate_staffing_template()
+		self.set_unit_start_date()
 		self.set_unit_end_date()
+		self.validate_unit_dates()
 		self.set_organization_level()
 		self.set_group_flag()
 
@@ -219,12 +222,23 @@ class OrganizationUnit(NestedSet):
 				)
 			)
 
+	def set_unit_start_date(self):
+		if not self.unit_start_date:
+			self.unit_start_date = today()
+
 	def set_unit_end_date(self):
 		if self.status == "Inactive":
 			if not self.unit_end_date:
 				self.unit_end_date = today()
 		elif self.unit_end_date:
 			self.unit_end_date = None
+
+	def validate_unit_dates(self):
+		if not self.unit_start_date or not self.unit_end_date:
+			return
+
+		if getdate(self.unit_end_date) < getdate(self.unit_start_date):
+			frappe.throw(_("End Date cannot be before Start Date."))
 
 	def set_short_code(self):
 		"""Use the manual short code when given (cleaned), else abbreviate the unit name."""
